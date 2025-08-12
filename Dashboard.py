@@ -10,8 +10,9 @@ arquivo_excel = r'C:\Users\lexus\Documents\Alseg\Cópia de Precificacao - Copia.
 # Configura a página para layout amplo
 st.set_page_config(layout='wide')
 
-
 # Dados agrupado de apólices e sinistros:
+
+
 @st.cache_data
 def carregar_e_processar_dados(caminho_arquivo):
     """
@@ -182,6 +183,10 @@ df_sinistros = carregar_e_processar_dados_sinistro(arquivo_excel)
 if df_sinistros.empty:
     st.stop()  # Para a execução se não houver dados
 
+# copia do DF da base de sinistro para utilizar
+df_sinistro_utilizar = df_sinistros.copy()
+
+
 # '''
 # imagem sidebar
 #
@@ -204,7 +209,7 @@ def img_to_base64(image_path):
 
 
 # Load and display sidebar image
-img_path = r'C:\Users\alex.sousa\Documents\Dados_Sinistros\image\lexus_gemine_II-Photoroom_menor80.png'
+img_path = r'C:\Users\lexus\Documents\Estudos_Programação\Dashboard_Allseg\image\lexus_hotoroom.png'
 img_base64 = img_to_base64(img_path)
 if img_base64:
     st.sidebar.markdown(
@@ -279,7 +284,25 @@ total_sinistro_filtro_apolice = df_para_filtro_apolice['Soma Sinistro Por Apolic
 percentual_sinistro_total_filtro_apolice = (
     total_sinistro_filtro_apolice / total_premio_filtro_apolice) if total_premio_filtro_apolice != 0 else 0
 
-col_apl_1, col_apl_2, col_apl_3 = st.columns(3)
+# criação do de DF com dados de sinistro de apólice selecionada.
+df_sinistro_apolice = df_sinistro_utilizar.loc[df_sinistro_utilizar['N° Apólice']
+                                               == apolices_selecionadas_filtro_apolice]
+
+# Quantidade de sinistros por apólice
+qtd_sinistros_apólice = df_sinistro_apolice['nr_sinistro'].nunique()
+
+
+# dados de sinistro por cobertura por apólice
+df_sinistro_apolice_cobertura = df_sinistro_apolice.groupby('Cobertura', as_index=False).agg(**{
+    'Total Sinistro': ('Total Sinistro', 'sum'),
+    'Qtd Sinistros': ('nr_sinistro', 'nunique')
+})
+
+df_sinistro_apolice_cobertura['Total Sinistro'] = (
+    df_sinistro_apolice_cobertura['Total Sinistro'].map(formatar_valor_br)
+)
+
+col_apl_1, col_apl_2, col_apl_3, col_apl_4 = st.columns(4)
 
 with col_apl_1:
     st.metric(label="Total Prêmio Pago",
@@ -290,6 +313,9 @@ with col_apl_2:
 with col_apl_3:
     st.metric(label="% Sinistro Total",
               value=f"{percentual_sinistro_total_filtro_apolice:.2%}")
+with col_apl_4:
+    st.metric(label='Qtd Sinistro', value=qtd_sinistros_apólice)
+
 
 # st.subheader('Segurado: ')
 # st.caption('Segurado: ')
@@ -328,7 +354,46 @@ with col_util_4:
     st.markdown(
         f"<h6 style='margin-top: 0; margin-bottom: 0.2rem;'>{utilização[0].title()}</h6>", unsafe_allow_html=True)
 
+st.text("Dados da Apólice")
 st.dataframe(dados_filtrados_filtro_apolice, hide_index=True)
+
+col_cob_sin_1, col_cob_sin_2 = st.columns(2)
+
+# Formatar como numero as colunas do df de dados da apólice
+df_sinistro_apolice['vl_sinistro_pago'] = (
+    df_sinistro_apolice['vl_sinistro_pago'].map(formatar_valor_br))
+df_sinistro_apolice['vl_sinistro_pendente'] = (
+    df_sinistro_apolice['vl_sinistro_pendente'].map(formatar_valor_br))
+df_sinistro_apolice['vl_sinistro_total'] = (
+    df_sinistro_apolice['vl_sinistro_total'].map(formatar_valor_br))
+df_sinistro_apolice['vl_despesa_pago'] = (
+    df_sinistro_apolice['vl_despesa_pago'].map(formatar_valor_br))
+df_sinistro_apolice['vl_despesa_pendente'] = (
+    df_sinistro_apolice['vl_despesa_pendente'].map(formatar_valor_br))
+df_sinistro_apolice['vl_despesa_total'] = (
+    df_sinistro_apolice['vl_despesa_total'].map(formatar_valor_br))
+df_sinistro_apolice['vl_honorario_pago'] = (
+    df_sinistro_apolice['vl_honorario_pago'].map(formatar_valor_br))
+df_sinistro_apolice['vl_honorario_pendente'] = (
+    df_sinistro_apolice['vl_honorario_pendente'].map(formatar_valor_br))
+df_sinistro_apolice['vl_honorario_total'] = (
+    df_sinistro_apolice['vl_honorario_total'].map(formatar_valor_br))
+df_sinistro_apolice['vl_salvado_pago'] = (
+    df_sinistro_apolice['vl_salvado_pago'].map(formatar_valor_br))
+df_sinistro_apolice['vl_salvado_pendente'] = (
+    df_sinistro_apolice['vl_salvado_pendente'].map(formatar_valor_br))
+df_sinistro_apolice['vl_salvado_total'] = (
+    df_sinistro_apolice['vl_salvado_total'].map(formatar_valor_br))
+df_sinistro_apolice['Total Sinistro'] = (
+    df_sinistro_apolice['Total Sinistro'].map(formatar_valor_br))
+
+with col_cob_sin_1:
+    st.text("Dados de Sinistro")
+    st.dataframe(df_sinistro_apolice, hide_index=True)
+with col_cob_sin_2:
+    st.text("Sinistro Por Cobertura")
+    st.dataframe(df_sinistro_apolice_cobertura, hide_index=True)
+
 
 #
 #
@@ -356,7 +421,7 @@ df_pr_sin_segurado['Soma Sinistro Por Apolice'] = df_pr_sin_segurado['Soma Sinis
     '.', '').str.replace(',', '.').astype(float)
 
 # Dados de sinistro do segurado
-df_sinistro_segurado = df_sinistros.loc[df_sinistros['nm_cliente'] == segurado[0]]
+df_sinistro_segurado = df_sinistro_utilizar.loc[df_sinistro_utilizar['nm_cliente'] == segurado[0]]
 
 
 total_pr_segurado = df_pr_sin_segurado['Soma Prêmio Pago por Apolice'].sum()
@@ -405,17 +470,61 @@ with seg_apl_5:
 #
 #
 
-# st.dataframe(df_sinistros, hide_index=True)
-
-st.dataframe(df_sinistro_segurado, hide_index=True)
-
 # dados de sinistro por cobertura por segurado
-df_sinistro_segurado_cobertura = df_sinistro_segurado.groupby(df_sinistro_segurado['Cobertura']).agg(
-    soma_total_snistro=('Total Sinistro', 'sum'),
-    contagem_de_sinistro=('nr_sinistro', 'nunique')
+df_sinistro_segurado_cobertura = df_sinistro_segurado.groupby('Cobertura', as_index=False).agg(**{
+    'Total Sinistro': ('Total Sinistro', 'sum'),
+    'Qtd Sinistros': ('nr_sinistro', 'nunique')
+})
+
+df_sinistro_segurado_cobertura['Total Sinistro'] = (
+    df_sinistro_segurado_cobertura['Total Sinistro'].map(formatar_valor_br)
 )
 
-df_sinistro_segurado_cobertura
+df_pr_sin_segurado['Soma Prêmio Pago por Apolice'] = (
+    df_pr_sin_segurado['Soma Prêmio Pago por Apolice'].map(formatar_valor_br))
+df_pr_sin_segurado['Soma Sinistro Por Apolice'] = (
+    df_pr_sin_segurado['Soma Sinistro Por Apolice'].map(formatar_valor_br))
+
+st.text('Dados das Apólices')
+st.dataframe(df_pr_sin_segurado, hide_index=True)
+
+col_segurado_sin_1, col_segurado_sin_2 = st.columns(2)
+
+# Formatar como numero as colunas do df de dados da apólice
+df_sinistro_segurado['vl_sinistro_pago'] = (
+    df_sinistro_segurado['vl_sinistro_pago'].map(formatar_valor_br))
+df_sinistro_segurado['vl_sinistro_pendente'] = (
+    df_sinistro_segurado['vl_sinistro_pendente'].map(formatar_valor_br))
+df_sinistro_segurado['vl_sinistro_total'] = (
+    df_sinistro_segurado['vl_sinistro_total'].map(formatar_valor_br))
+df_sinistro_segurado['vl_despesa_pago'] = (
+    df_sinistro_segurado['vl_despesa_pago'].map(formatar_valor_br))
+df_sinistro_segurado['vl_despesa_pendente'] = (
+    df_sinistro_segurado['vl_despesa_pendente'].map(formatar_valor_br))
+df_sinistro_segurado['vl_despesa_total'] = (
+    df_sinistro_segurado['vl_despesa_total'].map(formatar_valor_br))
+df_sinistro_segurado['vl_honorario_pago'] = (
+    df_sinistro_segurado['vl_honorario_pago'].map(formatar_valor_br))
+df_sinistro_segurado['vl_honorario_pendente'] = (
+    df_sinistro_segurado['vl_honorario_pendente'].map(formatar_valor_br))
+df_sinistro_segurado['vl_honorario_total'] = (
+    df_sinistro_segurado['vl_honorario_total'].map(formatar_valor_br))
+df_sinistro_segurado['vl_salvado_pago'] = (
+    df_sinistro_segurado['vl_salvado_pago'].map(formatar_valor_br))
+df_sinistro_segurado['vl_salvado_pendente'] = (
+    df_sinistro_segurado['vl_salvado_pendente'].map(formatar_valor_br))
+df_sinistro_segurado['vl_salvado_total'] = (
+    df_sinistro_segurado['vl_salvado_total'].map(formatar_valor_br))
+df_sinistro_segurado['Total Sinistro'] = (
+    df_sinistro_segurado['Total Sinistro'].map(formatar_valor_br))
+
+with col_segurado_sin_1:
+    st.text("Dados de Sinistro")
+    st.dataframe(df_sinistro_segurado, hide_index=True)
+with col_segurado_sin_2:
+    st.text("Sinistro Por Cobertura")
+    st.dataframe(df_sinistro_segurado_cobertura, hide_index=True)
+
 
 #
 #
